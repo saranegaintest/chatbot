@@ -1,14 +1,21 @@
 import json
 import re
 
-# ---------- Utility Functions ----------
-def is_tracking_number(user_input):
-    """Check if input looks like a tracking number."""
-    return bool(re.match(r"^[A-Za-z0-9]{5,}$", user_input))
+END_CHAT_WORDS = ["bye", "end", "quit", "exit"]
 
+# ---------- Utility Functions ----------
 def get_user_input(prompt="You: "):
     """Wrapper for input (for easier future expansion, logging, etc.)."""
     return input(prompt).strip()
+
+def matches_intent(user_input, keywords):
+    """Return True if any keyword is found in user input (case-insensitive)."""
+    user_input = user_input.lower()
+    return any(keyword in user_input for keyword in keywords)
+
+def is_tracking_number(user_input):
+    """Check if input looks like a tracking number."""
+    return bool(re.match(r"^[A-Za-z0-9]{5,}$", user_input))
 
 def lookup_tracking_status(tracking_id, filename="data/packages.json"):
     """Look up the tracking status from a JSON file."""
@@ -43,7 +50,7 @@ def package_tracking_module():
     while True:
         tracking_input = get_user_input()
         
-        if tracking_input.lower() in ["bye", "exit", "quit"]:
+        if tracking_input.lower() in END_CHAT_WORDS:
             return -1
         
         if not is_tracking_number(tracking_input):
@@ -57,10 +64,15 @@ def package_tracking_module():
             print("Bot: We are facing some issues on our side. Please try again later!")
             return 0
         else:
-            if status.lower() == "delivered":
-                return delivered_package_flow(tracking_input)
+            print(f"Bot: Thanks! I’ve found your package. Tracking ID {tracking_input} status: {status}.")
+            if status.lower() == "in transit":
+                print("Bot: Please wait for your package to arrive. Thanks for your patience!")
+            elif status.lower() == "out for delivery":
+                print("Bot: Your package is almost there! It should arrive today. Please keep an eye out.")
+            elif status.lower() == "delivered":
+                return delivered_package_flow(tracking_input)  # start special delivered flow
             else:
-                print(f"Bot: Thanks! I’ve found your package. Tracking ID {tracking_input} status: {status}.")
+                print("Bot: Thanks for your patience while your package is being processed.")
                 return 0
         
 # ---------- Module: Delivered Package Follow-up ----------
@@ -70,14 +82,26 @@ def delivered_package_flow(tracking_id):
 
     while True:
         response = get_user_input()
-        if response.lower() in ["bye", "exit", "quit"]:
+        if response.lower() in END_CHAT_WORDS:
             return -1
         elif response.lower() in ["yes", "y"]:
             print("Bot: Great! I’m glad your package arrived safely.")
             return 0
         elif response.lower() in ["no", "n"]:
-            print("Bot: I’m sorry to hear that. I’ll guide you to file a missing package claim.")
-            return file_claim_flow(tracking_id)
+            print("Bot: I’m sorry to hear that. I can help you file a missing package claim.")
+            print("Bot: Are you sure you want to continue with filing a claim? (yes/no)")
+
+            while True:
+                confirm = get_user_input()
+                if confirm.lower() in END_CHAT_WORDS:
+                    return -1
+                elif confirm.lower() in ["yes", "y"]:
+                    return file_claim_flow(tracking_id)
+                elif confirm.lower() in ["no", "n"]:
+                    print("Bot: Okay, I won’t file a claim.")
+                    return 0
+                else:
+                    print("Bot: Please answer 'yes' or 'no'.")
         else:
             print("Bot: Please answer 'yes' or 'no'.")
 
@@ -89,10 +113,10 @@ def file_claim_flow(tracking_id):
     print("Bot: Can you please provide your full name?")
     while True:
         name = get_user_input()
-        if name.lower() in ["bye", "exit", "quit"]:
-            return -1
         if validate_name(name):
             break
+        elif name.lower() in END_CHAT_WORDS:
+            return -1
         else:
             print("Bot: That doesn’t look like a valid name. Please use only letters, spaces, or hyphens.")
 
@@ -100,10 +124,10 @@ def file_claim_flow(tracking_id):
     print(f"Bot: Thanks, {name}. Can you provide an email or phone number where we can reach you?")
     while True:
         contact = get_user_input()
-        if contact.lower() in ["bye", "exit", "quit"]:
-            return -1
         if validate_contact(contact):
             break
+        elif contact.lower() in END_CHAT_WORDS:
+            return -1
         else:
             print("Bot: That doesn’t look like a valid email or phone number. Please try again.")
 
@@ -116,24 +140,27 @@ def file_claim_flow(tracking_id):
 # ---------- Main Chatbot ----------
 def chatbot():
     print("\nBot: Hello! How can I help you today?")
-    
+    menu_shown_count = 0  # keeps track of how many times menu is displayed
+
     while True:
+        menu_shown_count += 1
+
         print("1. Track a lost package")
+        if menu_shown_count > 1:
+            print("2. End chat")
 
         user_input = get_user_input()
-
-        if user_input.lower() in ["bye", "exit", "quit"]:
-            print("Bot: Thanks for chatting! Have a great day!")
-            break
         
-        elif "1" in user_input or "lost" in user_input or "track" in user_input or "package" in user_input:
+        if matches_intent(user_input, ["1", "lost", "track", "package"]):
             package_tracking_outcome =package_tracking_module()
             if package_tracking_outcome == 0:
                 print("\nBot: How else can I help you today?")
             elif package_tracking_outcome == -1:
                 print("Bot: Thanks for chatting! Have a great day!")
-                break
-        
+                break 
+        elif user_input.lower() in END_CHAT_WORDS or (menu_shown_count > 1 and "2" in user_input):
+            print("Bot: Thanks for chatting! Have a great day!")
+            break
         else:
             print("Bot: Sorry, that’s not a valid response. Please choose from the options below.")
 
