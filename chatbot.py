@@ -1,3 +1,4 @@
+import json
 import re
 
 # ---------- Utility Functions ----------
@@ -9,6 +10,15 @@ def get_user_input(prompt="You: "):
     """Wrapper for input (for easier future expansion, logging, etc.)."""
     return input(prompt).strip()
 
+def lookup_tracking_status(tracking_id, filename="data/packages.json"):
+    """Look up the tracking status from a JSON file."""
+    try:
+        with open(filename, "r") as f:
+            data = json.load(f)
+            return data.get(tracking_id.upper(), None)
+    except FileNotFoundError:
+        return "Error: package data file not found."
+
 # ---------- Module: Package Tracking ----------
 def package_tracking_module():
     print("Bot: I see that you can't find your package. Can you please provide your tracking number?")
@@ -18,12 +28,20 @@ def package_tracking_module():
         
         if tracking_input.lower() in ["bye", "exit", "quit"]:
             return -1
-
-        if is_tracking_number(tracking_input):
-            print(f"Bot: Thanks! I’ve found your package. Tracking ID {tracking_input} is currently in transit.")
+        
+        if not is_tracking_number(tracking_input):
+            print("Bot: Hmm, that doesn’t look like a valid tracking number. Try something like ABC12345.")
+            continue
+        
+        status = lookup_tracking_status(tracking_input)
+        if status is None:
+            print(f"Bot: I couldn’t find tracking ID {tracking_input}. Please check your number and try again.")
+        elif "Error" in status:
+            print("Bot: We are facing some issues on our side. Please try again later!")
             return 0
         else:
-            print("Bot: Hmm, that doesn’t look like a valid tracking number. Try something like ABC12345.")
+            print(f"Bot: Thanks! I’ve found your package. Tracking ID {tracking_input} status: {status}.")
+            return 0
 
 # ---------- Main Chatbot ----------
 def chatbot():
@@ -47,7 +65,7 @@ def chatbot():
                 break
         
         else:
-            print("Bot: Sorry, that’s not a valid option. Please type the number of your choice.")
+            print("Bot: Sorry, that’s not a valid response. Please choose from the options below.")
 
 # ---------- Run ----------
 if __name__ == "__main__":
