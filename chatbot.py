@@ -1,7 +1,7 @@
 import json
 import re
 
-END_CHAT_WORDS = ["bye", "end", "quit", "exit", "no", "nothing"]
+END_CHAT_WORDS = ["bye", "end", "quit", "exit", "nothing"]
 
 # ---------- Utility Functions ----------
 def get_user_input(prompt="You: "):
@@ -95,7 +95,7 @@ def delivered_package_flow(tracking_id):
 
             while True:
                 confirm = get_user_input()
-                if matches_intent(confirm.lower, END_CHAT_WORDS):
+                if matches_intent(confirm, END_CHAT_WORDS):
                     return -1
                 elif confirm.lower() in ["yes", "y"]:
                     return file_claim_flow(tracking_id)
