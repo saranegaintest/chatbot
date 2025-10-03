@@ -1,7 +1,7 @@
 import json
 import re
 
-END_CHAT_WORDS = ["bye", "end", "quit", "exit"]
+END_CHAT_WORDS = ["bye", "end", "quit", "exit", "no", "nothing"]
 
 # ---------- Utility Functions ----------
 def get_user_input(prompt="You: "):
@@ -67,8 +67,10 @@ def package_tracking_module():
             print(f"Bot: Thanks! I’ve found your package. Tracking ID {tracking_input} status: {status}.")
             if status.lower() == "in transit":
                 print("Bot: Please wait for your package to arrive. Thanks for your patience!")
+                return 0
             elif status.lower() == "out for delivery":
                 print("Bot: Your package is almost there! It should arrive today. Please keep an eye out.")
+                return 0
             elif status.lower() == "delivered":
                 return delivered_package_flow(tracking_input)  # start special delivered flow
             else:
@@ -82,7 +84,7 @@ def delivered_package_flow(tracking_id):
 
     while True:
         response = get_user_input()
-        if response.lower() in END_CHAT_WORDS:
+        if matches_intent(response, END_CHAT_WORDS):
             return -1
         elif response.lower() in ["yes", "y"]:
             print("Bot: Great! I’m glad your package arrived safely.")
@@ -93,7 +95,7 @@ def delivered_package_flow(tracking_id):
 
             while True:
                 confirm = get_user_input()
-                if confirm.lower() in END_CHAT_WORDS:
+                if matches_intent(confirm.lower, END_CHAT_WORDS):
                     return -1
                 elif confirm.lower() in ["yes", "y"]:
                     return file_claim_flow(tracking_id)
@@ -115,7 +117,7 @@ def file_claim_flow(tracking_id):
         name = get_user_input()
         if validate_name(name):
             break
-        elif name.lower() in END_CHAT_WORDS:
+        elif matches_intent(name, END_CHAT_WORDS):
             return -1
         else:
             print("Bot: That doesn’t look like a valid name. Please use only letters, spaces, or hyphens.")
@@ -126,7 +128,7 @@ def file_claim_flow(tracking_id):
         contact = get_user_input()
         if validate_contact(contact):
             break
-        elif contact.lower() in END_CHAT_WORDS:
+        elif matches_intent(contact, END_CHAT_WORDS):
             return -1
         else:
             print("Bot: That doesn’t look like a valid email or phone number. Please try again.")
@@ -151,14 +153,14 @@ def chatbot():
 
         user_input = get_user_input()
         
-        if matches_intent(user_input, ["1", "lost", "track", "package"]):
+        if matches_intent(user_input, ["1", "lost", "track", "package", "find", "order"]):
             package_tracking_outcome =package_tracking_module()
             if package_tracking_outcome == 0:
                 print("\nBot: How else can I help you today?")
             elif package_tracking_outcome == -1:
                 print("Bot: Thanks for chatting! Have a great day!")
                 break 
-        elif user_input.lower() in END_CHAT_WORDS or (menu_shown_count > 1 and "2" in user_input):
+        elif matches_intent(user_input, END_CHAT_WORDS) or (menu_shown_count > 1 and "2" in user_input):
             print("Bot: Thanks for chatting! Have a great day!")
             break
         else:
